@@ -18,7 +18,8 @@ def np_load_allow_pickle(*a, **k):
     return np.load(*a, allow_pickle=True, **k)
 #lambda *a,**k: np_load_old(*a, allow_pickle=True, **k)
 
-# load"""
+# load
+"""
 dict_from_app = np_load_allow_pickle('/Users/dftdatascience/Desktop/ev-charge-planner/flask/algo2_inputs_dict.npz')
 
 
