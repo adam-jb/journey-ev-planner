@@ -129,6 +129,7 @@ def get_candidate_stops_each_chunk(chunks_count,
 
 
 ### loading input from dict
+"""
 sample_ncr=algo2_inputs_dict['sample_ncr']
 latlong_first=algo2_inputs_dict['latlong_first']
 latlong_destination=algo2_inputs_dict['latlong_destination']
@@ -138,7 +139,7 @@ max_range=algo2_inputs_dict['max_range']
 battery_size=algo2_inputs_dict['battery_size']
 
 sample_ncr = pd.DataFrame(sample_ncr, columns=['latitude', 'longitude','rating', 'name', 'FastestConnector_kW'])
-
+"""
 
 
 """
