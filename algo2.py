@@ -18,8 +18,8 @@ def np_load_allow_pickle(*a, **k):
     return np.load(*a, allow_pickle=True, **k)
 #lambda *a,**k: np_load_old(*a, allow_pickle=True, **k)
 
-# load
-#dict_from_app = np_load_allow_pickle('/Users/dftdatascience/Desktop/ev-charge-planner/flask/algo2_inputs_dict.npz')
+# load"""
+dict_from_app = np_load_allow_pickle('/Users/dftdatascience/Desktop/ev-charge-planner/flask/algo2_inputs_dict.npz')
 
 
 # convert input to dict
@@ -29,7 +29,7 @@ for file in dict_from_app.files:
 
 algo2_inputs_dict.keys()
 
-
+"""
 def is_candidate_viable(distance_start_to_end_miles,
                         distance_travelled_so_far,
                         distance_to_go,
