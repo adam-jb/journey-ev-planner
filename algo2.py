@@ -24,13 +24,27 @@ dict_from_app = np_load_allow_pickle('/Users/dftdatascience/Desktop/ev-charge-pl
 
 
 # convert input to dict
+
 algo2_inputs_dict = {}
 for file in dict_from_app.files:
     algo2_inputs_dict[file] = dict_from_app[file]
 
 algo2_inputs_dict.keys()
 
+
+
+### loading input from dict
+sample_ncr=algo2_inputs_dict['sample_ncr']
+latlong_first=algo2_inputs_dict['latlong_first']
+latlong_destination=algo2_inputs_dict['latlong_destination']
+speed_comfort=algo2_inputs_dict['speed_comfort']
+ev_charge_speed=algo2_inputs_dict['ev_charge_speed']
+max_range=algo2_inputs_dict['max_range']
+battery_size=algo2_inputs_dict['battery_size']
+sample_ncr = pd.DataFrame(sample_ncr, columns=['latitude', 'longitude','rating', 'name', 'FastestConnector_kW'])
 """
+
+
 def is_candidate_viable(distance_start_to_end_miles,
                         distance_travelled_so_far,
                         distance_to_go,
@@ -43,109 +57,10 @@ def is_candidate_viable(distance_start_to_end_miles,
     return (distance_travelled_so_far / (distance_start_to_end_miles - distance_to_go)) < X_factor
 
 
-# following chunks: find acceptable points
-def find_stops_for_chunk(first_chunk_candidates_accepted,
-                         max_chunk_range_miles,
-                         min_chunk_range_miles,
-                         distance_matrix,
-                         distance_start_to_end_miles):
-
-    # sometimes first_chunk_candidates_accepted is empty
-    # this doesnt consider direction which could be used to filter more aggresively
-    a = distance_matrix[first_chunk_candidates_accepted, :] >= min_chunk_range_miles
-    b = distance_matrix[first_chunk_candidates_accepted, :] <= max_chunk_range_miles
-
-    print('a and b')
-    print(a * b)
-    aa = a * b
-    print('abshap')
-    print(aa.shape)
-
-    chunk_candidates = np.where((a * b)[0])[0]
-    print('chunk_candidates shape')
-    print(chunk_candidates.shape)
-
-
-    # use chunk_candidates as ix to get osrm distances
-    dists_travelled = distance_matrix[chunk_candidates, ]  # distance from start point to candidate
-    print('dists_travelled')
-    print(dists_travelled.shape)
-    dists_to_go = distance_matrix[chunk_candidates, 1]  # distance from end point to candidate
-
-    to_include_ix = is_candidate_viable(distance_start_to_end_miles, dists_travelled, dists_to_go)
-
-    chunk_candidates_accepted = chunk_candidates[to_include_ix]
-
-    return chunk_candidates_accepted, dists_travelled
-
-
-# process for chunks
-def get_candidate_stops_each_chunk(chunks_count,
-                                   distance_matrix,
-                                   min_chunk_range_miles,
-                                   max_chunk_range_miles,
-                                   distance_start_to_end_miles):
-    #max_chunk_range_miles = (distance_start_to_end_miles / chunks_count) * 1.5  # for few chunk may exceed EV dist
-    #min_chunk_range_miles = (distance_start_to_end_miles / chunks_count) * 0.7
-
-    stops_dict_a_chunk = {'chunks_count': chunks_count}
-
-    # get chunk for first stop
-    chunk_candidates = np.where(
-        np.logical_and(distance_matrix[0, :] >= min_chunk_range_miles, distance_matrix[0, :] <= max_chunk_range_miles))
-    chunk_candidates = chunk_candidates[0]  # gets it to right format
-
-    dists_travelled = distance_matrix[chunk_candidates, 0]  # distance from start point to candidate
-    dists_to_go = distance_matrix[chunk_candidates, 1]  # distance from end point to candidate
-
-    print('dists_travelled')
-    print(dists_travelled)
-    print('dists_to_go')
-    print(dists_to_go)
-    print('distance_start_to_end_miles')
-    print(distance_start_to_end_miles)
-
-    to_include_ix = is_candidate_viable(distance_start_to_end_miles, dists_travelled, dists_to_go)
-    print('to_include_ix')
-    print(to_include_ix)
-    current_chunk_candidates_accepted = chunk_candidates[to_include_ix]
-    stops_dict_a_chunk['chunk1'] = current_chunk_candidates_accepted
-
-    # get chunks for stops 2 and over
-    for i in range(2, chunks_count):
-        stops_dict_a_chunk['chunk' + str(i)], dists_travelled  = find_stops_for_chunk(stops_dict_a_chunk['chunk' + str(i-1)] ,
-                                                                 max_chunk_range_miles,
-                                                                 min_chunk_range_miles,
-                                                                 distance_matrix,
-                                                                 distance_start_to_end_miles)
-
-        #stops_dict_a_chunk['chunk' + str(i)] = current_chunk_candidates_accepted
-
-        # do something to cumsum dists_travelled
-
-    return stops_dict_a_chunk
 
 
 
 
-### loading input from dict
-"""
-sample_ncr=algo2_inputs_dict['sample_ncr']
-latlong_first=algo2_inputs_dict['latlong_first']
-latlong_destination=algo2_inputs_dict['latlong_destination']
-speed_comfort=algo2_inputs_dict['speed_comfort']
-ev_charge_speed=algo2_inputs_dict['ev_charge_speed']
-max_range=algo2_inputs_dict['max_range']
-battery_size=algo2_inputs_dict['battery_size']
-
-sample_ncr = pd.DataFrame(sample_ncr, columns=['latitude', 'longitude','rating', 'name', 'FastestConnector_kW'])
-"""
-
-
-"""
-Start of Algo 2
-Find optimal route based on chosen inputs, includes queries to OSRM
-"""
 def algorithm2(sample_ncr,latlong_first,latlong_destination,speed_comfort,ev_charge_speed,max_range,battery_size):
 
     sample_ncr_len = len(sample_ncr)
@@ -191,118 +106,142 @@ def algorithm2(sample_ncr,latlong_first,latlong_destination,speed_comfort,ev_cha
 
 
     max_range = float(max_range)
-    max_chunk_range_miles = np.min([max_range,(distance_start_to_end_miles / max_chunks_count) * 1.5])
-    min_chunk_range_miles = (distance_start_to_end_miles / max_chunks_count) * 0.7
 
     # candidates for first chunk: think below section superscedes this
     # chunk_candidates = np.where(np.logical_and(distance_matrix[0,:]>=min_chunk_range_miles, distance_matrix[0,:]<=max_chunk_range_miles))
     # chunk_candidates = chunk_candidates[0]  # gets it to right format
 
 
-    #### test ground ends
+    #### start!!!!
+    def get_candidates_from_chunks_count(chunks_count,
+                                         max_range,
+                                         distance_matrix,
+                                         distance_start_to_end_miles,
+                                         X_factor = 1.7):
+
+        # setting acceptable chunk size
+        max_chunk_range_miles = np.min([max_range,(distance_start_to_end_miles / chunks_count) * 1.5])
+        min_chunk_range_miles = (distance_start_to_end_miles / chunks_count) * 0.7
+
+        ### will go in fubc: to get candidate stops each chunk. Thhis is all for a 4-section journey
+        stops_dict_a_chunk = {'chunks_count': chunks_count}
+
+            # get chunk for first stop
+        chunk_candidates = np.where(
+            np.logical_and(distance_matrix[0, :] >= min_chunk_range_miles, distance_matrix[0, :] <= max_chunk_range_miles))
+        chunk_candidates = chunk_candidates[0]  # gets it to right format
+
+        dists_travelled = distance_matrix[chunk_candidates, 0]  # distance from start point to candidate
+        dists_to_go = distance_matrix[chunk_candidates, 1]  # distance from end point to candidate
+
+        to_include_ix = is_candidate_viable(distance_start_to_end_miles, dists_travelled, dists_to_go)
+        current_chunk_candidates_accepted = chunk_candidates[to_include_ix]
+        stops_dict_a_chunk['chunk1'] = current_chunk_candidates_accepted
 
 
-    all_chunk_candidates_dict = {}
-    for chunks_count in range(2, max_chunks_count + 1):
-        all_chunk_candidates_dict[chunks_count] = get_candidate_stops_each_chunk(chunks_count,
-                                                                                 distance_matrix,
-                                                                                 min_chunk_range_miles,
-                                                                                 max_chunk_range_miles,
-                                                                                 distance_start_to_end_miles)
+        # record dists travelled so far
+        distance_travelled_so_far = distance_matrix[current_chunk_candidates_accepted, 0]
 
-    # storing arrays of all possible values in a dict
+        if chunks_count == 1:
+            return np.array(np.meshgrid([0], stops_dict_a_chunk['chunk1'], [1])).T.reshape(-1, 3)
+
+
+        print('2nd chunk')
+        # find cands for that (could look to previous chunk in a loop
+        previous_candidates = stops_dict_a_chunk['chunk1']
+
+        a = distance_matrix[previous_candidates, :] >= min_chunk_range_miles
+        b = distance_matrix[previous_candidates, :] <= max_chunk_range_miles
+
+        print('a and b')
+        print(a.shape)
+        print(b.shape)
+        chunk_candidates = np.where((a * b)[0])[0]
+        print('done')
+
+
+        # use chunk_candidates as ix to get osrm distances
+        dists_travelled = distance_matrix[:, previous_candidates][chunk_candidates]  # distance between previous' chunks
+                                                                    # and this bits from the nutters
+        print('dists_travelled')
+        print(dists_travelled.shape)
+
+        cumulative_dists_travelled = np.add(dists_travelled, distance_travelled_so_far)
+
+
+        dists_to_go = distance_matrix[chunk_candidates, 1]  # distance from end point to candidate
+
+
+        true_false_candidiates = np.divide(cumulative_dists_travelled.T, (distance_start_to_end_miles - dists_to_go).T).T < X_factor
+        print(true_false_candidiates.shape)
+
+
+        candidates_at_least_one_accepted = np.sum(true_false_candidiates,axis=1)
+        ix = np.where(candidates_at_least_one_accepted)[0]
+        accepted_candidates = chunk_candidates[ix]
+
+        cumulative_dists_travelled = cumulative_dists_travelled[ix, :]
+
+        stops_dict_a_chunk['chunk2'] = accepted_candidates   ## candidates
+
+        if chunks_count == 2:
+            return np.array(np.meshgrid([0], stops_dict_a_chunk['chunk1'],stops_dict_a_chunk['chunk2'], [1])).T.reshape(-1, 4)
+
+
+
+        print('3rd chunk')
+        previous_candidates = stops_dict_a_chunk['chunk2']
+
+        a = distance_matrix[previous_candidates, :] >= min_chunk_range_miles
+        b = distance_matrix[previous_candidates, :] <= max_chunk_range_miles
+        chunk_candidates = np.where((a * b)[0])[0]
+
+        dists_travelled = distance_matrix[:, previous_candidates][chunk_candidates]
+
+        chunk3_cumdists_travelled =np.zeros((dists_travelled.shape[0], dists_travelled.shape[1], cumulative_dists_travelled.shape[1]))
+
+        for_reshape_size = dists_travelled.shape[1]
+        print('dists_travelled shape')
+        print(dists_travelled.shape)
+        for i in range(dists_travelled.shape[0]):
+            chunk3_cumdists_travelled[i,:,:]=np.add(dists_travelled[i, ].reshape(for_reshape_size, 1), cumulative_dists_travelled)
+
+        dists_to_go = distance_matrix[chunk_candidates, 1]
+
+        true_false_candidiates = np.divide(chunk3_cumdists_travelled.T, (distance_start_to_end_miles - dists_to_go).T).T < X_factor
+        candidates_at_least_one_accepted = np.sum(true_false_candidiates,axis=(1,2))
+        ix = np.where(candidates_at_least_one_accepted)[0]
+        accepted_candidates = chunk_candidates[ix]
+
+        chunk3_cumdists_travelled[ix, :, :] = chunk3_cumdists_travelled[ix, :, :]
+        stops_dict_a_chunk['chunk3'] = accepted_candidates   ## candidates
+
+        return np.array(np.meshgrid([0], stops_dict_a_chunk['chunk1'],stops_dict_a_chunk['chunk2'],stops_dict_a_chunk['chunk3'], [1])).T.reshape(-1, 5)
+        ## do above: add if/when depending on number of chunks it's being run for
+
+
+
+
+
+    # run the above for all acceptable chunk counts to make:
+
+    X_factor = 1.7
+
     all_possibilities_dict = {}
+    for i in range(min_chunks_count-1,max_chunks_count):
+        all_possibilities_dict[i] = get_candidates_from_chunks_count(i,
+                                             max_range,
+                                             distance_matrix,
+                                             distance_start_to_end_miles,
+                                             X_factor)
 
-    # for 1-stop
-    vals = all_chunk_candidates_dict[2]['chunk1']
-    all_possibilities_dict['one_chunk'] = np.array(np.meshgrid([0], vals, [1])).T.reshape(-1, 3)
-    # adding 1 columns
-    for i in range(2, max_chunks_count):
-        all_possibilities_dict['one_chunk'] = np.c_[
-            all_possibilities_dict['one_chunk'], np.ones(len(all_possibilities_dict['one_chunk']))]
-
-        # for 2 stops
-    if max_chunks_count >= 3:
-        vals = all_chunk_candidates_dict[3]['chunk1']
-        vals2 = all_chunk_candidates_dict[3]['chunk2']
-        all_possibilities_dict['two_chunk'] = np.array(np.meshgrid([0], vals, vals2, [1])).T.reshape(-1, 4)
-        for i in range(3, max_chunks_count):
-            all_possibilities_dict['two_chunk'] = np.c_[
-                all_possibilities_dict['two_chunk'], np.ones(len(all_possibilities_dict['two_chunk']))]
-
-            # 3 stops
-    if max_chunks_count >= 4:
-        vals = all_chunk_candidates_dict[4]['chunk1']
-        vals2 = all_chunk_candidates_dict[4]['chunk2']
-        vals3 = all_chunk_candidates_dict[4]['chunk3']
-        all_possibilities_dict['three_chunk'] = np.array(np.meshgrid([0], vals, vals2, vals3, [1])).T.reshape(-1, 5)
-        for i in range(4, max_chunks_count):
-            all_possibilities_dict['three_chunk'] = np.c_[
-                all_possibilities_dict['three_chunk'], np.ones(len(all_possibilities_dict['three_chunk']))]
-
-    # 4 stops
-    if max_chunks_count >= 5:
-        vals = all_chunk_candidates_dict[5]['chunk1']
-        vals2 = all_chunk_candidates_dict[5]['chunk2']
-        vals3 = all_chunk_candidates_dict[5]['chunk3']
-        vals4 = all_chunk_candidates_dict[5]['chunk4']
-        all_possibilities_dict['four_chunk'] = np.array(np.meshgrid([0], vals, vals2, vals3, vals4,[1])).T.reshape(-1, 6)
-        for i in range(5, max_chunks_count):
-            all_possibilities_dict['four_chunk'] = np.c_[
-                all_possibilities_dict['four_chunk'], np.ones(len(all_possibilities_dict['four_chunk']))]
-
-    # 5 stops
-    if max_chunks_count >= 6:
-        vals = all_chunk_candidates_dict[6]['chunk1']
-        vals2 = all_chunk_candidates_dict[6]['chunk2']
-        vals3 = all_chunk_candidates_dict[6]['chunk3']
-        vals4 = all_chunk_candidates_dict[6]['chunk4']
-        vals5 = all_chunk_candidates_dict[6]['chunk5']
-        all_possibilities_dict['five_chunk'] = np.array(np.meshgrid([0], vals, vals2, vals3, vals4,vals5,[1])).T.reshape(-1, 7)
-        for i in range(6, max_chunks_count):
-            all_possibilities_dict['five_chunk'] = np.c_[
-                all_possibilities_dict['five_chunk'], np.ones(len(all_possibilities_dict['five_chunk']))]
+        cols_of_ones_to_add = max_chunks_count - i - 1
+        while cols_of_ones_to_add > 0.1:
+            all_possibilities_dict[i] = np.c_[
+                all_possibilities_dict[i], np.ones(len(all_possibilities_dict[i]))]
+            cols_of_ones_to_add = cols_of_ones_to_add - 1
 
 
-    # 6 stops
-    if max_chunks_count >= 7:
-        vals = all_chunk_candidates_dict[7]['chunk1']
-        vals2 = all_chunk_candidates_dict[7]['chunk2']
-        vals3 = all_chunk_candidates_dict[7]['chunk3']
-        vals4 = all_chunk_candidates_dict[7]['chunk4']
-        vals5 = all_chunk_candidates_dict[7]['chunk5']
-        vals6 = all_chunk_candidates_dict[7]['chunk6']
-        all_possibilities_dict['six_chunk'] = np.array(np.meshgrid([0], vals, vals2, vals3, vals4,vals5,vals6,[1])).T.reshape(-1, 8)
-        for i in range(7, max_chunks_count):
-            all_possibilities_dict['six_chunk'] = np.c_[
-                all_possibilities_dict['six_chunk'], np.ones(len(all_possibilities_dict['six_chunk']))]
-
-
-    # 7 stops
-    if max_chunks_count >= 8:
-        vals = all_chunk_candidates_dict[8]['chunk1']
-        vals2 = all_chunk_candidates_dict[8]['chunk2']
-        vals3 = all_chunk_candidates_dict[8]['chunk3']
-        vals4 = all_chunk_candidates_dict[8]['chunk4']
-        vals5 = all_chunk_candidates_dict[8]['chunk5']
-        vals6 = all_chunk_candidates_dict[8]['chunk6']
-        vals7 = all_chunk_candidates_dict[8]['chunk7']
-        all_possibilities_dict['seven_chunk'] = np.array(np.meshgrid([0], vals, vals2, vals3, vals4,vals5,vals6,vals7[1])).T.reshape(-1, 9)
-        for i in range(8, max_chunks_count):
-            all_possibilities_dict['seven_chunk'] = np.c_[
-                all_possibilities_dict['seven_chunk'], np.ones(len(all_possibilities_dict['seven_chunk']))]
-
-    if max_chunks_count >= 9:
-        print('sorry,not set up for any more chunks, youll have to make do!')
-
-    # remove chunks which fall below the min_chunks_count
-    min_chunks_count_counter = min_chunks_count
-    lookup_dict = {3: 'one', 4: 'two', 5: 'three', 6: 'four', 7: 'five', 8: 'six', 9: 'seven'}
-    while min_chunks_count_counter >= 3:
-        # removes min chunks, eg 4 chunk journey only allows 'three_chunk' and over, as that means 4 sections
-        key_to_pop = lookup_dict[min_chunks_count_counter] + '_chunk'
-        all_possibilities_dict.pop(key_to_pop, None)
-        min_chunks_count_counter = min_chunks_count_counter - 1
 
 
     # convert dict into single array
@@ -324,9 +263,22 @@ def algorithm2(sample_ncr,latlong_first,latlong_destination,speed_comfort,ev_cha
 
     journey_distances = np.zeros((journeys.shape[0], journeys.shape[1] - 1))
     for i in range(journey_distances.shape[1]):
+        print(i)
+        print(journeys[:, i + 1])
         journey_distances[:, i] = distance_matrix[journeys[:, i], journeys[:, i + 1]]
 
-    np.savetxt('/Users/dftdatascience/Desktop/ev-charge-planner/flask/journey_distances.csv', journey_distances)
+    """
+    a = np.max(journey_distances, axis=1)
+    print(np.min(a))  # check at least one journey is actually legal
+    print(max_range)
+
+
+    ix = distance_matrix[:,1] < max_range
+    np.isin(journeys[:,3] , np.where(ix)[0])
+    """
+
+
+    #np.savetxt('/Users/dftdatascience/Desktop/ev-charge-planner/flask/journey_distances.csv', journey_distances)
 
     # calc charging times using NCR and car kW
     a = np.asarray([99999999, 99999999]).astype('int')
@@ -440,12 +392,6 @@ def algorithm2(sample_ncr,latlong_first,latlong_destination,speed_comfort,ev_cha
                    'marker_coords': marker_coords}
 
     return output_vals
-
-
-
-
-
-
 
 
 
