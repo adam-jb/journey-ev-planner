@@ -74,20 +74,20 @@ def algorithm2(sample_ncr,latlong_first,latlong_destination,speed_comfort,ev_cha
     latlong_first_string = ','.join([str(x) for x in latlong_first])
     latlong_destination_string = ','.join([str(x) for x in latlong_destination])
 
-    full_query_text = '0.0.0.0:4999/table/v1/driving/' + latlong_first_string + ';' + latlong_destination_string + ';' + latlong_text_for_query
+    full_query_text = '0.0.0.0:5000/table/v1/driving/' + latlong_first_string + ';' + latlong_destination_string + ';' + latlong_text_for_query
 
     result = os.popen("curl '" + full_query_text + "'").read()
 
     travel_time_matrix = json.loads(result)['durations']
     travel_time_matrix = np.asarray(travel_time_matrix)
 
-    full_query_text = '0.0.0.0:4999/route/v1/driving/' + latlong_first_string + ';' + latlong_destination_string + '?overview=false'
+    full_query_text = '0.0.0.0:5000/route/v1/driving/' + latlong_first_string + ';' + latlong_destination_string + '?overview=false'
     result = os.popen("curl '" + full_query_text + "'").read()
 
     distance_start_to_end_miles = json.loads(result)['routes'][0]['legs'][0]['distance'] / 1600
     start_to_end_direct_seconds = json.loads(result)['routes'][0]['legs'][0]['duration']
 
-    full_query_text_distances = '0.0.0.0:4999/table/v1/driving/' + latlong_first_string + ';' + latlong_destination_string + ';' + latlong_text_for_query + '?annotations=distance'
+    full_query_text_distances = '0.0.0.0:5000/table/v1/driving/' + latlong_first_string + ';' + latlong_destination_string + ';' + latlong_text_for_query + '?annotations=distance'
     result = os.popen("curl '" + full_query_text_distances + "'").read()
 
     distance_matrix = json.loads(result)['distances']
@@ -352,7 +352,7 @@ def algorithm2(sample_ncr,latlong_first,latlong_destination,speed_comfort,ev_cha
         pair2 = "{:.6f}".format(output_results.iloc[i + 1, :]['longitude']) + ',' + "{:.6f}".format(output_results.iloc[i + 1, :][
             'latitude'])
 
-        url_for_polylines = '0.0.0.0:4999/route/v1/car/' + pair1 + ';' + pair2
+        url_for_polylines = '0.0.0.0:5000/route/v1/car/' + pair1 + ';' + pair2
         response = os.popen("curl '" + url_for_polylines + "'").read()
         json_data = json.loads(response)
         poly_out = json_data["routes"][0]["geometry"]
