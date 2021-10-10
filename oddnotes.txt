@@ -1,0 +1,11 @@
+Open and deactivate venv
+
+
+source venv/bin/activate
+deactivate venv
+
+
+Install pandas in linux without it taking ages:
+conda install pandas
+(So like pip, but with conda command - need miniconda installed for it to work)
+https://pandas.pydata.org/docs/getting_started/install.html
