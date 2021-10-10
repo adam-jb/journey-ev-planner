@@ -9,3 +9,9 @@ Install pandas in linux without it taking ages:
 conda install pandas
 (So like pip, but with conda command - need miniconda installed for it to work)
 https://pandas.pydata.org/docs/getting_started/install.html
+
+
+for setting flask up on Google Compute Engine with http (not https) on nginx and gunicorn
+https://towardsdatascience.com/deploying-a-custom-ml-prediction-service-on-google-cloud-ae3be7e6d38f
+
+
