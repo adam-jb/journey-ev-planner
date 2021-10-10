@@ -15,3 +15,5 @@ for setting flask up on Google Compute Engine with http (not https) on nginx and
 https://towardsdatascience.com/deploying-a-custom-ml-prediction-service-on-google-cloud-ae3be7e6d38f
 
 
+To launch app in compute engine:
+gunicorn --bind 0.0.0.0:5000 app:app
