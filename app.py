@@ -147,7 +147,7 @@ def landing():
 
 
         #outfile = '/Users/dftdatascience/Desktop/ev-charge-planner/flask/algo2_inputs_dict.npz'
-        np.savez(outfile, **algo2_inputs_dict)
+        #np.savez(outfile, **algo2_inputs_dict)
 
 
         # run Algo 2
@@ -156,7 +156,15 @@ def landing():
 
         # catching where no need to charge
         if read_dictionary == '<h1>It looks like you can make the journey without stopping to charge! :)</h1>':
+            print('can make journey without stopping to charge')
             return read_dictionary  
+
+        if read_dictionary == "cant_find_perfect_route":
+            print('cant_find_perfect_route')
+            return "<h2>Sorry, it looks like we can't find you the perfect route :(</h2>\n\
+        <h3>Your journey might need too many stops (ie, 8 or more!)</h3>\n\
+        <h3>Or we might need to improve our work-in-progress algorithm :/</h3>\n\
+        <h3>Try going back and adjusting the inputs</h3>"  
 
         # Load results of algo 2 from jupyter
         #read_dictionary = np.load('/Users/dftdatascience/Desktop/ev-charge-planner/flask/dummy_output.npy',allow_pickle='TRUE').item()

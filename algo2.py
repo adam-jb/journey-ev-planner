@@ -45,19 +45,6 @@ sample_ncr = pd.DataFrame(sample_ncr, columns=['latitude', 'longitude','rating',
 """
 
 
-def is_candidate_viable(distance_start_to_end_miles,
-                        distance_travelled_so_far,
-                        distance_to_go,
-                        X_factor=1.7):
-    """returns false if the distance covered is much lower than the total gap closed
-    from the start.
-    By a factor of X_factor
-    Higher X_factor means routes have to be 'pushing forward' towards the goal more
-    Inputs are for candidate service stations as part of the chunking process"""
-    return (distance_travelled_so_far / (distance_start_to_end_miles - distance_to_go)) < X_factor
-
-
-
 osrm_url = '0.0.0.0:5000'
 osrm_url = 'http://34.70.0.117:5000'
 
@@ -66,7 +53,7 @@ def algorithm2(sample_ncr,latlong_first,latlong_destination,speed_comfort,ev_cha
 
     sample_ncr_len = len(sample_ncr)
 
-    sample_ncr['lat_long'] = sample_ncr['latitude'].astype('str') + ',' + sample_ncr['longitude'].astype('str')
+    #sample_ncr['lat_long'] = sample_ncr['latitude'].astype('str') + ',' + sample_ncr['longitude'].astype('str')
     sample_ncr['lat_long'] = sample_ncr['longitude'].astype('str') + ',' + sample_ncr['latitude'].astype('str')
 
     for_query = sample_ncr['lat_long']
@@ -102,162 +89,86 @@ def algorithm2(sample_ncr,latlong_first,latlong_destination,speed_comfort,ev_cha
     if (distance_matrix[0, 1] < (max_range * 0.95)):
         return ('<h1>It looks like you can make the journey without stopping to charge! :)</h1>')
 
-    max_chunks_count = math.ceil((distance_start_to_end_miles * 1.3) / max_range)
-    min_chunks_count = math.ceil((distance_start_to_end_miles) / max_range)
 
 
+    # getting all possible combinations
     max_range = float(max_range)
+    stops_count = np.min([(math.ceil((1.2 * distance_start_to_end_miles) / max_range) - 1), 6])  # maximum of 6 stop counts for computational tractability
 
-    # candidates for first chunk: think below section superscedes this
-    # chunk_candidates = np.where(np.logical_and(distance_matrix[0,:]>=min_chunk_range_miles, distance_matrix[0,:]<=max_chunk_range_miles))
-    # chunk_candidates = chunk_candidates[0]  # gets it to right format
-
-
-    #### start!!!!
-    def get_candidates_from_chunks_count(chunks_count,
-                                         max_range,
-                                         distance_matrix,
-                                         distance_start_to_end_miles,
-                                         X_factor = 1.7):
-
-        # setting acceptable chunk size
-        max_chunk_range_miles = np.min([max_range,(distance_start_to_end_miles / chunks_count) * 1.5])
-        min_chunk_range_miles = (distance_start_to_end_miles / chunks_count) * 0.7
-
-        ### will go in fubc: to get candidate stops each chunk. Thhis is all for a 4-section journey
-        stops_dict_a_chunk = {'chunks_count': chunks_count}
-
-            # get chunk for first stop
-        chunk_candidates = np.where(
-            np.logical_and(distance_matrix[0, :] >= min_chunk_range_miles, distance_matrix[0, :] <= max_chunk_range_miles))
-        chunk_candidates = chunk_candidates[0]  # gets it to right format
-
-        dists_travelled = distance_matrix[chunk_candidates, 0]  # distance from start point to candidate
-        dists_to_go = distance_matrix[chunk_candidates, 1]  # distance from end point to candidate
-
-        to_include_ix = is_candidate_viable(distance_start_to_end_miles, dists_travelled, dists_to_go)
-        current_chunk_candidates_accepted = chunk_candidates[to_include_ix]
-        stops_dict_a_chunk['chunk1'] = current_chunk_candidates_accepted
+    print('distance_start_to_end_miles')
+    print(distance_start_to_end_miles)
+    print(max_range)
+    print((1.2 * distance_start_to_end_miles) / max_range)
 
 
-        # record dists travelled so far
-        distance_travelled_so_far = distance_matrix[current_chunk_candidates_accepted, 0]
+    points_between_dict = {}          # #latlong_first is (long, lat)
+    for i in range(1,stops_count+1):
+        points_between_dict[i] = [
+                                latlong_first[0] - ((latlong_first[0] - latlong_destination[0]) * (i / (stops_count+1))),
+                                latlong_first[1] - ((latlong_first[1] - latlong_destination[1]) * (i / (stops_count+1))),
+                                ]
 
-        if chunks_count == 1:
-            return np.array(np.meshgrid([0], stops_dict_a_chunk['chunk1'], [1])).T.reshape(-1, 3)
+    dist_between_points = math.sqrt((latlong_first[0] - latlong_destination[0])**2 + (latlong_first[0] - latlong_destination[0])**2) / (stops_count+1)
 
-
-        print('2nd chunk')
-        # find cands for that (could look to previous chunk in a loop
-        previous_candidates = stops_dict_a_chunk['chunk1']
-
-        a = distance_matrix[previous_candidates, :] >= min_chunk_range_miles
-        b = distance_matrix[previous_candidates, :] <= max_chunk_range_miles
-
-        print('a and b')
-        print(a.shape)
-        print(b.shape)
-        chunk_candidates = np.where((a * b)[0])[0]
-        print('done')
-
-
-        # use chunk_candidates as ix to get osrm distances
-        dists_travelled = distance_matrix[:, previous_candidates][chunk_candidates]  # distance between previous' chunks
-                                                                    # and this bits from the nutters
-        print('dists_travelled')
-        print(dists_travelled.shape)
-
-        cumulative_dists_travelled = np.add(dists_travelled, distance_travelled_so_far)
+    # get list of tuples of start, destination, and all options
+    list_tuples_coords = [latlong_first, latlong_destination]
+    list_tuples_coords_all_cands = list(zip(sample_ncr['longitude'], sample_ncr['latitude']))
+    for i in range(len(list_tuples_coords_all_cands)):
+        list_tuples_coords.append(list_tuples_coords_all_cands[i])
+    #list_tuples_coords = list_tuples_coords.append(list_tuples_coords_all_cands)
+    print('len(list_tuples_coords)')
+    print(len(list_tuples_coords))
+    np_array_coords = np.array([list(x) for x in list_tuples_coords])
+    print('np_array_coords shape')
+    print(np_array_coords.shape)
 
 
-        dists_to_go = distance_matrix[chunk_candidates, 1]  # distance from end point to candidate
+    # find which of these are in the circles - and thus candidates for each stop
+    candidates_for_each_stop_dict = {}
+    for i in range(1,stops_count+1):
+        longitude = points_between_dict[i][0]
+        latitude = points_between_dict[i][1]
+
+        distances =  np.sqrt((np_array_coords[:,0] - longitude)**2 + (np_array_coords[:,1] - latitude)**2)
+        acceptable_candidates = np.where(distances < (dist_between_points * 1.4))[0]
+        print(acceptable_candidates)
+        candidates_for_each_stop_dict[i] = acceptable_candidates
 
 
-        true_false_candidiates = np.divide(cumulative_dists_travelled.T, (distance_start_to_end_miles - dists_to_go).T).T < X_factor
-        print(true_false_candidiates.shape)
+    print('stops_count')
+    print(stops_count)
 
 
-        candidates_at_least_one_accepted = np.sum(true_false_candidiates,axis=1)
-        ix = np.where(candidates_at_least_one_accepted)[0]
-        accepted_candidates = chunk_candidates[ix]
+    # getting all possible routes
+    if stops_count == 1:
+        journeys = np.array(np.meshgrid([0], candidates_for_each_stop_dict[1], [1])).T.reshape(-1,3)
+    if stops_count == 2:
+        journeys = np.array(np.meshgrid([0], candidates_for_each_stop_dict[1], candidates_for_each_stop_dict[2],[1])).T.reshape(-1,4)
+    if stops_count == 3:
+        journeys = np.array(np.meshgrid([0], candidates_for_each_stop_dict[1], candidates_for_each_stop_dict[2],candidates_for_each_stop_dict[3],[1])).T.reshape(-1,5)
+    if stops_count == 4:
+        journeys = np.array(np.meshgrid([0], candidates_for_each_stop_dict[1], candidates_for_each_stop_dict[2],candidates_for_each_stop_dict[3],candidates_for_each_stop_dict[4],[1])).T.reshape(-1,6)
+    if stops_count == 5:
+        journeys = np.array(np.meshgrid([0], candidates_for_each_stop_dict[1], candidates_for_each_stop_dict[2],candidates_for_each_stop_dict[3],candidates_for_each_stop_dict[4],candidates_for_each_stop_dict[5],[1])).T.reshape(-1,7)
+    if stops_count == 6:
+            journeys = np.array(np.meshgrid([0], candidates_for_each_stop_dict[1], candidates_for_each_stop_dict[2],candidates_for_each_stop_dict[3],candidates_for_each_stop_dict[4],candidates_for_each_stop_dict[5],candidates_for_each_stop_dict[6],[1])).T.reshape(-1,8)
 
-        cumulative_dists_travelled = cumulative_dists_travelled[ix, :]
 
-        stops_dict_a_chunk['chunk2'] = accepted_candidates   ## candidates
+    journeys = np.array(journeys)
 
-        if chunks_count == 2:
-            return np.array(np.meshgrid([0], stops_dict_a_chunk['chunk1'],stops_dict_a_chunk['chunk2'], [1])).T.reshape(-1, 4)
-
-
-
-        print('3rd chunk')
-        previous_candidates = stops_dict_a_chunk['chunk2']
-
-        a = distance_matrix[previous_candidates, :] >= min_chunk_range_miles
-        b = distance_matrix[previous_candidates, :] <= max_chunk_range_miles
-        chunk_candidates = np.where((a * b)[0])[0]
-
-        dists_travelled = distance_matrix[:, previous_candidates][chunk_candidates]
-
-        chunk3_cumdists_travelled =np.zeros((dists_travelled.shape[0], dists_travelled.shape[1], cumulative_dists_travelled.shape[1]))
-
-        for_reshape_size = dists_travelled.shape[1]
-        print('dists_travelled shape')
-        print(dists_travelled.shape)
-        for i in range(dists_travelled.shape[0]):
-            chunk3_cumdists_travelled[i,:,:]=np.add(dists_travelled[i, ].reshape(for_reshape_size, 1), cumulative_dists_travelled)
-
-        dists_to_go = distance_matrix[chunk_candidates, 1]
-
-        true_false_candidiates = np.divide(chunk3_cumdists_travelled.T, (distance_start_to_end_miles - dists_to_go).T).T < X_factor
-        candidates_at_least_one_accepted = np.sum(true_false_candidiates,axis=(1,2))
-        ix = np.where(candidates_at_least_one_accepted)[0]
-        accepted_candidates = chunk_candidates[ix]
-
-        chunk3_cumdists_travelled[ix, :, :] = chunk3_cumdists_travelled[ix, :, :]
-        stops_dict_a_chunk['chunk3'] = accepted_candidates   ## candidates
-
-        return np.array(np.meshgrid([0], stops_dict_a_chunk['chunk1'],stops_dict_a_chunk['chunk2'],stops_dict_a_chunk['chunk3'], [1])).T.reshape(-1, 5)
-        ## do above: add if/when depending on number of chunks it's being run for
+    print('shape')
+    print(journeys.shape)
+    journeys = journeys.astype('int16')
 
 
 
 
-
-    # run the above for all acceptable chunk counts to make:
-
-    X_factor = 1.7
-
-    all_possibilities_dict = {}
-    for i in range(min_chunks_count-1,max_chunks_count):
-        all_possibilities_dict[i] = get_candidates_from_chunks_count(i,
-                                             max_range,
-                                             distance_matrix,
-                                             distance_start_to_end_miles,
-                                             X_factor)
-
-        cols_of_ones_to_add = max_chunks_count - i - 1
-        while cols_of_ones_to_add > 0.1:
-            all_possibilities_dict[i] = np.c_[
-                all_possibilities_dict[i], np.ones(len(all_possibilities_dict[i]))]
-            cols_of_ones_to_add = cols_of_ones_to_add - 1
+    ##### all journeys got by now!
 
 
 
 
-    # convert dict into single array
-    chunk_keys_to_use = list(all_possibilities_dict.keys())
-    journeys = all_possibilities_dict[chunk_keys_to_use[0]]
-    print('journeys')
-    for key in chunk_keys_to_use[1:]:
-        print(all_possibilities_dict[key])
-        print(journeys)
-        print(journeys.shape)
-        journeys = np.r_[journeys, all_possibilities_dict[key]]
-
-    journeys = journeys.astype('int')
-
-    # get array input for journey times up to 5 journeys (4 stops). Empty will be 1's as 1 is endpoint
+    # get journey times and distances
     journey_times = np.zeros((journeys.shape[0], journeys.shape[1] - 1))
     for i in range(journey_times.shape[1]):
         journey_times[:, i] = travel_time_matrix[journeys[:, i], journeys[:, i + 1]]
@@ -268,12 +179,264 @@ def algorithm2(sample_ncr,latlong_first,latlong_destination,speed_comfort,ev_cha
         print(journeys[:, i + 1])
         journey_distances[:, i] = distance_matrix[journeys[:, i], journeys[:, i + 1]]
 
-    """
+    
+    # filtering for routes which dont exceed max range at any point
     a = np.max(journey_distances, axis=1)
-    print(np.min(a))  # check at least one journey is actually legal
-    print(max_range)
+    ix = a < max_range
+    print('sum legal routes:')
+    print(np.sum(ix))
+    journeys = journeys[ix, :]  
+    print('journeys shape')
+    print(journeys.shape)
 
 
+
+
+
+
+
+
+
+    ##### 2nd attempt
+
+    # trying adding one more stop with a slightly more generous radius if the above doesn't work
+    if (float(np.sum(ix)) < 0.5):
+        stops_count = stops_count + 1
+
+
+        points_between_dict = {}          # #latlong_first is (long, lat)
+        for i in range(1,stops_count+1):
+            points_between_dict[i] = [
+                                    latlong_first[0] - ((latlong_first[0] - latlong_destination[0]) * (i / (stops_count+1))),
+                                    latlong_first[1] - ((latlong_first[1] - latlong_destination[1]) * (i / (stops_count+1))),
+                                    ]
+
+        dist_between_points = math.sqrt((latlong_first[0] - latlong_destination[0])**2 + (latlong_first[0] - latlong_destination[0])**2) / (stops_count+1)
+
+        # get list of tuples of start, destination, and all options
+        list_tuples_coords = [latlong_first, latlong_destination]
+        list_tuples_coords_all_cands = list(zip(sample_ncr['longitude'], sample_ncr['latitude']))
+        for i in range(len(list_tuples_coords_all_cands)):
+            list_tuples_coords.append(list_tuples_coords_all_cands[i])
+        #list_tuples_coords = list_tuples_coords.append(list_tuples_coords_all_cands)
+        print('len(list_tuples_coords)')
+        print(len(list_tuples_coords))
+        np_array_coords = np.array([list(x) for x in list_tuples_coords])
+        print('np_array_coords shape')
+        print(np_array_coords.shape)
+
+
+        # find which of these are in the circles - and thus candidates for each stop
+        candidates_for_each_stop_dict = {}
+        for i in range(1,stops_count+1):
+            longitude = points_between_dict[i][0]
+            latitude = points_between_dict[i][1]
+
+            distances =  np.sqrt((np_array_coords[:,0] - longitude)**2 + (np_array_coords[:,1] - latitude)**2)
+            acceptable_candidates = np.where(distances < (dist_between_points * 1.6))[0]   # radius of 1.6 mult instead of 1.4
+            print(acceptable_candidates)
+            candidates_for_each_stop_dict[i] = acceptable_candidates
+
+
+        print('stops_count')
+        print(stops_count)
+
+
+        # getting all possible routes
+        if stops_count == 1:
+            journeys = np.array(np.meshgrid([0], candidates_for_each_stop_dict[1], [1])).T.reshape(-1,3)
+        if stops_count == 2:
+            journeys = np.array(np.meshgrid([0], candidates_for_each_stop_dict[1], candidates_for_each_stop_dict[2],[1])).T.reshape(-1,4)
+        if stops_count == 3:
+            journeys = np.array(np.meshgrid([0], candidates_for_each_stop_dict[1], candidates_for_each_stop_dict[2],candidates_for_each_stop_dict[3],[1])).T.reshape(-1,5)
+        if stops_count == 4:
+            journeys = np.array(np.meshgrid([0], candidates_for_each_stop_dict[1], candidates_for_each_stop_dict[2],candidates_for_each_stop_dict[3],candidates_for_each_stop_dict[4],[1])).T.reshape(-1,6)
+        if stops_count == 5:
+            journeys = np.array(np.meshgrid([0], candidates_for_each_stop_dict[1], candidates_for_each_stop_dict[2],candidates_for_each_stop_dict[3],candidates_for_each_stop_dict[4],candidates_for_each_stop_dict[5],[1])).T.reshape(-1,7)
+        if stops_count == 6:
+                journeys = np.array(np.meshgrid([0], candidates_for_each_stop_dict[1], candidates_for_each_stop_dict[2],candidates_for_each_stop_dict[3],candidates_for_each_stop_dict[4],candidates_for_each_stop_dict[5],candidates_for_each_stop_dict[6],[1])).T.reshape(-1,8)
+
+
+        journeys = np.array(journeys)
+
+        print('shape')
+        print(journeys.shape)
+        journeys = journeys.astype('int16')
+
+
+
+
+        ##### all journeys got by now!
+
+
+
+
+        # get journey times and distances
+        journey_times = np.zeros((journeys.shape[0], journeys.shape[1] - 1))
+        for i in range(journey_times.shape[1]):
+            journey_times[:, i] = travel_time_matrix[journeys[:, i], journeys[:, i + 1]]
+
+        journey_distances = np.zeros((journeys.shape[0], journeys.shape[1] - 1))
+        for i in range(journey_distances.shape[1]):
+            print(i)
+            print(journeys[:, i + 1])
+            journey_distances[:, i] = distance_matrix[journeys[:, i], journeys[:, i + 1]]
+
+        
+        # filtering for routes which dont exceed max range at any point
+        a = np.max(journey_distances, axis=1)
+        ix = a < max_range
+        print('sum legal routes:')
+        print(np.sum(ix))
+        journeys = journeys[ix, :]  
+        print('journeys shape')
+        print(journeys.shape)
+
+        print('end of 2nd attempt')
+
+
+
+    #### end of 2nd attempt
+
+
+
+
+
+
+
+
+
+
+    #### 3rd attempt to mop up really tricky cases!
+    if (float(np.sum(ix)) < 0.5):
+        stops_count = stops_count + 1
+
+
+        points_between_dict = {}          # #latlong_first is (long, lat)
+        for i in range(1,stops_count+1):
+            points_between_dict[i] = [
+                                    latlong_first[0] - ((latlong_first[0] - latlong_destination[0]) * (i / (stops_count+1))),
+                                    latlong_first[1] - ((latlong_first[1] - latlong_destination[1]) * (i / (stops_count+1))),
+                                    ]
+
+        dist_between_points = math.sqrt((latlong_first[0] - latlong_destination[0])**2 + (latlong_first[0] - latlong_destination[0])**2) / (stops_count+1)
+
+        # get list of tuples of start, destination, and all options
+        list_tuples_coords = [latlong_first, latlong_destination]
+        list_tuples_coords_all_cands = list(zip(sample_ncr['longitude'], sample_ncr['latitude']))
+        for i in range(len(list_tuples_coords_all_cands)):
+            list_tuples_coords.append(list_tuples_coords_all_cands[i])
+        #list_tuples_coords = list_tuples_coords.append(list_tuples_coords_all_cands)
+        print('len(list_tuples_coords)')
+        print(len(list_tuples_coords))
+        np_array_coords = np.array([list(x) for x in list_tuples_coords])
+        print('np_array_coords shape')
+        print(np_array_coords.shape)
+
+
+        # find which of these are in the circles - and thus candidates for each stop
+        candidates_for_each_stop_dict = {}
+        for i in range(1,stops_count+1):
+            longitude = points_between_dict[i][0]
+            latitude = points_between_dict[i][1]
+
+            distances =  np.sqrt((np_array_coords[:,0] - longitude)**2 + (np_array_coords[:,1] - latitude)**2)
+            acceptable_candidates = np.where(distances < (dist_between_points * 3.0))[0]   # radius of 2.2 mult instead of 1.4
+            print(acceptable_candidates)
+            candidates_for_each_stop_dict[i] = acceptable_candidates
+
+
+        print('stops_count')
+        print(stops_count)
+
+
+        # getting all possible routes
+        if stops_count == 1:
+            journeys = np.array(np.meshgrid([0], candidates_for_each_stop_dict[1], [1])).T.reshape(-1,3)
+        if stops_count == 2:
+            journeys = np.array(np.meshgrid([0], candidates_for_each_stop_dict[1], candidates_for_each_stop_dict[2],[1])).T.reshape(-1,4)
+        if stops_count == 3:
+            journeys = np.array(np.meshgrid([0], candidates_for_each_stop_dict[1], candidates_for_each_stop_dict[2],candidates_for_each_stop_dict[3],[1])).T.reshape(-1,5)
+        if stops_count == 4:
+            journeys = np.array(np.meshgrid([0], candidates_for_each_stop_dict[1], candidates_for_each_stop_dict[2],candidates_for_each_stop_dict[3],candidates_for_each_stop_dict[4],[1])).T.reshape(-1,6)
+        if stops_count == 5:
+            journeys = np.array(np.meshgrid([0], candidates_for_each_stop_dict[1], candidates_for_each_stop_dict[2],candidates_for_each_stop_dict[3],candidates_for_each_stop_dict[4],candidates_for_each_stop_dict[5],[1])).T.reshape(-1,7)
+        if stops_count == 6:
+            journeys = np.array(np.meshgrid([0], candidates_for_each_stop_dict[1], candidates_for_each_stop_dict[2],candidates_for_each_stop_dict[3],candidates_for_each_stop_dict[4],candidates_for_each_stop_dict[5],candidates_for_each_stop_dict[6],[1])).T.reshape(-1,8)
+        if stops_count == 7:
+            journeys = np.array(np.meshgrid([0], candidates_for_each_stop_dict[1], candidates_for_each_stop_dict[2],candidates_for_each_stop_dict[3],candidates_for_each_stop_dict[4],candidates_for_each_stop_dict[5],candidates_for_each_stop_dict[6],candidates_for_each_stop_dict[7],[1])).T.reshape(-1,9)
+
+
+        journeys = np.array(journeys)
+
+        print('shape')
+        print(journeys.shape)
+        journeys = journeys.astype('int16')
+
+
+
+
+        ##### all journeys got by now!
+
+
+
+
+        # get journey times and distances
+        journey_times = np.zeros((journeys.shape[0], journeys.shape[1] - 1))
+        for i in range(journey_times.shape[1]):
+            journey_times[:, i] = travel_time_matrix[journeys[:, i], journeys[:, i + 1]]
+
+        journey_distances = np.zeros((journeys.shape[0], journeys.shape[1] - 1))
+        for i in range(journey_distances.shape[1]):
+            print(i)
+            print(journeys[:, i + 1])
+            journey_distances[:, i] = distance_matrix[journeys[:, i], journeys[:, i + 1]]
+
+        
+        # filtering for routes which dont exceed max range at any point
+        a = np.max(journey_distances, axis=1)
+        ix = a < max_range
+        print('sum legal routes:')
+        print(np.sum(ix))
+        journeys = journeys[ix, :]  
+        print('journeys shape')
+        print(journeys.shape)
+
+        print('end of 3rd attempt')
+
+
+
+
+
+
+
+
+
+    ##### end of 3rd attempt
+
+
+    print('float sum ix of ')
+    print(float(np.sum(ix)))
+
+
+
+    if (float(np.sum(ix)) < 0.5):
+        return "cant_find_perfect_route"
+
+
+    # getting new journey times and distances after filter
+    journey_times = np.zeros((journeys.shape[0], journeys.shape[1] - 1))
+    for i in range(journey_times.shape[1]):
+        journey_times[:, i] = travel_time_matrix[journeys[:, i], journeys[:, i + 1]]
+
+    journey_distances = np.zeros((journeys.shape[0], journeys.shape[1] - 1))
+    for i in range(journey_distances.shape[1]):
+        print(i)
+        print(journeys[:, i + 1])
+        journey_distances[:, i] = distance_matrix[journeys[:, i], journeys[:, i + 1]]
+
+
+    """
     ix = distance_matrix[:,1] < max_range
     np.isin(journeys[:,3] , np.where(ix)[0])
     """

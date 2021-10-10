@@ -164,6 +164,9 @@
 
     <script>
 
+        /// getting data from flask
+        data = {{points_from_flask | safe}}
+
 
 
         var center_coords = {{center | safe}}
@@ -218,6 +221,11 @@
             myMarker.addTo(leafletMap);
         }
 
+
+        //// add polylines
+        //console.log(data)
+        //L.polyline(data, {color: 'red'}).addTo(leafletMap);  // data = points_from_flask
+        //leafletMap.fitBounds(polyline.getBounds());        // fit bounding box to polylines
 
 
 
@@ -359,11 +367,7 @@
         var verts = [];
 
 
-        /// getting data from flask
-        data = {{points_from_flask | safe}}
-        //console.log(data)
-
-
+        
         // adding text to hover_box
         from_flask_array_length = data.length
 
