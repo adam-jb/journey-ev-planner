@@ -19,6 +19,10 @@ To launch app in compute engine:
 gunicorn --bind 0.0.0.0:5000 app:app
 
 
+To launch in compute engine and go in background:
+gunicorn --bind 0.0.0.0:5000 app:app --daemon
+
+
 
 Linux: to list % of RAM used by each process
 ps -o pid,user,%mem,command ax | sort -b -k3 -r
