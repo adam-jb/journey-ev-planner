@@ -17,3 +17,22 @@ https://towardsdatascience.com/deploying-a-custom-ml-prediction-service-on-googl
 
 To launch app in compute engine:
 gunicorn --bind 0.0.0.0:5000 app:app
+
+
+
+Linux: to list % of RAM used by each process
+ps -o pid,user,%mem,command ax | sort -b -k3 -r
+ 
+ 
+Linux: list active internet connections/ports
+netstat -natp
+
+
+
+ 
+ 
+ 
+ 
+
+ 
+
