@@ -32,6 +32,9 @@ Linux: list active internet connections/ports
 netstat -natp
 
 
+# linux: open first file in folder in sublime
+sublime $(ls | head -1)
+
 
  
  
