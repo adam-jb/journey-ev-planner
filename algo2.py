@@ -341,7 +341,7 @@ def algorithm2(sample_ncr,latlong_first,latlong_destination,speed_comfort,ev_cha
             latitude = points_between_dict[i][1]
 
             distances =  np.sqrt((np_array_coords[:,0] - longitude)**2 + (np_array_coords[:,1] - latitude)**2)
-            acceptable_candidates = np.where(distances < (dist_between_points * 3.0))[0]   # radius of 2.2 mult instead of 1.4
+            acceptable_candidates = np.where(distances < (dist_between_points * 1.8))[0]   # radius of 1.4 mult instead of 1.4
             print(acceptable_candidates)
             candidates_for_each_stop_dict[i] = acceptable_candidates
 

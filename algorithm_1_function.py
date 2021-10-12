@@ -26,10 +26,10 @@ def algorithm_1_function(start_postcode,end_postcode,postcode_lookup,ncr_data,co
     threshold_increment = 1
 
     # max number of chargepoints that can be fed through to algorithm 2
-    max_chargepoints = 100
+    max_chargepoints = 240
 
     # minimum number of chargepoint that can be fed through to algorithm 2
-    min_chargepoints = 80
+    min_chargepoints = 180
 
     # number of chargers parameter when start being stricter with rating to filter
     number_charge_points_parameter = 5

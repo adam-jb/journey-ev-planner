@@ -108,11 +108,11 @@ def landing():
         ncr_data = ratings
         sample_ncr = algorithm_1_function(start_postcode,end_postcode,postcode_lookup,ncr_data,comfort_rating)
 
-        # ensure no more than 97 rows
-        len_ncr = len(sample_ncr)
-        print(len_ncr)
-        rows_to_include = np.minimum(len_ncr, 97)
-        sample_ncr = sample_ncr.iloc[:rows_to_include,:]  # 
+        # ensure no more than 97 rows (update 12th Oct: no longer used as OSRM limit increased)
+        #len_ncr = len(sample_ncr)
+        #print(len_ncr)
+        #rows_to_include = np.minimum(len_ncr, 97)
+        #sample_ncr = sample_ncr.iloc[:rows_to_include,:]  # 
 
 
         #sample_ncr.to_csv('/Users/dftdatascience/Desktop/ev-charge-planner/flask/sample_ncr_created.csv')
